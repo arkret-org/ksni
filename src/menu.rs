@@ -6,7 +6,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
-use zbus::zvariant::{OwnedValue, Str, Type, Value};
+use zbus::{OwnedVariant, Str, Type, Variant};
 
 // pub struct Properties {
 //     /// Tells if the menus are in a normal state or they believe that they
@@ -24,7 +24,7 @@ use zbus::zvariant::{OwnedValue, Str, Type, Value};
 
 /// Direction of texts
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Type, Serialize)]
-#[zvariant(signature = "s")]
+#[zbus(signature = "s")]
 pub enum TextDirection {
     #[serde(rename = "ltr")]
     LeftToRight,
@@ -32,9 +32,9 @@ pub enum TextDirection {
     RightToLeft,
 }
 
-// The Value dervie macro can only handle `dict` or `a{sv}` values
+// The Variant dervie macro can only handle `dict` or `a{sv}` values
 // so we impl it manually
-impl From<TextDirection> for Value<'_> {
+impl From<TextDirection> for Variant<'_> {
     fn from(value: TextDirection) -> Self {
         value.to_string().into()
     }
@@ -47,16 +47,16 @@ impl fmt::Display for TextDirection {
 }
 
 #[derive(Type, Serialize)]
-#[zvariant(signature = "s")]
+#[zbus(signature = "s")]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum Status {
     Normal,
     Notice,
 }
 
-// The Value dervie macro can only handle `dict` or `a{sv}` values
+// The Variant dervie macro can only handle `dict` or `a{sv}` values
 // so we impl it manually
-impl From<Status> for Value<'_> {
+impl From<Status> for Variant<'_> {
     fn from(value: Status) -> Self {
         value.to_string().into()
     }
@@ -102,10 +102,8 @@ pub struct StandardItem<T> {
     /// in the list of keypresses. Each list of strings contains a list of
     /// modifiers and then the key that is used. The modifier strings
     /// allowed are: "Control", "Alt", "Shift" and "Super".
-    /// - A simple shortcut like Ctrl+S is represented as:
-    ///   [["Control", "S"]]
-    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as:
-    ///   [["Control", "Q"], ["Alt", "X"]]
+    /// - A simple shortcut like Ctrl+S is represented as: [["Control", "S"]]
+    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as: [["Control", "Q"], ["Alt", "X"]]
     pub shortcut: Vec<Vec<String>>,
     /// How the menuitem feels the information it's displaying to the
     /// user should be presented.
@@ -192,10 +190,8 @@ pub struct SubMenu<T> {
     /// in the list of keypresses. Each list of strings contains a list of
     /// modifiers and then the key that is used. The modifier strings
     /// allowed are: "Control", "Alt", "Shift" and "Super".
-    /// - A simple shortcut like Ctrl+S is represented as:
-    ///   [["Control", "S"]]
-    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as:
-    ///   [["Control", "Q"], ["Alt", "X"]]
+    /// - A simple shortcut like Ctrl+S is represented as: [["Control", "S"]]
+    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as: [["Control", "Q"], ["Alt", "X"]]
     pub shortcut: Vec<Vec<String>>,
     /// How the menuitem feels the information it's displaying to the
     /// user should be presented.
@@ -267,10 +263,8 @@ pub struct CheckmarkItem<T> {
     /// in the list of keypresses. Each list of strings contains a list of
     /// modifiers and then the key that is used. The modifier strings
     /// allowed are: "Control", "Alt", "Shift" and "Super".
-    /// - A simple shortcut like Ctrl+S is represented as:
-    ///   [["Control", "S"]]
-    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as:
-    ///   [["Control", "Q"], ["Alt", "X"]]
+    /// - A simple shortcut like Ctrl+S is represented as: [["Control", "S"]]
+    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as: [["Control", "Q"], ["Alt", "X"]]
     pub shortcut: Vec<Vec<String>>,
     /// How the menuitem feels the information it's displaying to the
     /// user should be presented.
@@ -394,12 +388,10 @@ pub struct RadioGroup<T> {
     ///                 select: Box::new(|tray: &mut Self, index: usize| {
     ///                     tray.selected = index;
     ///                 }),
-    ///                 options: vec![
-    ///                     ksni::menu::RadioItem {
-    ///                         label: "Option 1".into(),
-    ///                         ..Default::default()
-    ///                     },
-    ///                 ],
+    ///                 options: vec![ksni::menu::RadioItem {
+    ///                     label: "Option 1".into(),
+    ///                     ..Default::default()
+    ///                 }],
     ///             }
     ///             .into(),
     ///         ]
@@ -451,10 +443,8 @@ pub struct RadioItem {
     /// in the list of keypresses. Each list of strings contains a list of
     /// modifiers and then the key that is used. The modifier strings
     /// allowed are: "Control", "Alt", "Shift" and "Super".
-    /// - A simple shortcut like Ctrl+S is represented as:
-    ///   [["Control", "S"]]
-    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as:
-    ///   [["Control", "Q"], ["Alt", "X"]]
+    /// - A simple shortcut like Ctrl+S is represented as: [["Control", "S"]]
+    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as: [["Control", "Q"], ["Alt", "X"]]
     pub shortcut: Vec<Vec<String>>,
     /// How the menuitem feels the information it's displaying to the
     /// user should be presented.
@@ -497,10 +487,8 @@ pub(crate) struct RawMenuItem<T> {
     /// in the list of keypresses. Each list of strings contains a list of
     /// modifiers and then the key that is used. The modifier strings
     /// allowed are: "Control", "Alt", "Shift" and "Super".
-    /// - A simple shortcut like Ctrl+S is represented as:
-    ///   [["Control", "S"]]
-    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as:
-    ///   [["Control", "Q"], ["Alt", "X"]]
+    /// - A simple shortcut like Ctrl+S is represented as: [["Control", "S"]]
+    /// - A complex shortcut like Ctrl+Q, Alt+X is represented as: [["Control", "Q"], ["Alt", "X"]]
     shortcut: Vec<Vec<String>>,
     toggle_type: ToggleType,
     /// Describe the current state of a "togglable" item.
@@ -517,10 +505,17 @@ pub(crate) struct RawMenuItem<T> {
 }
 
 macro_rules! if_not_default_then_insert {
-    ($map: ident, $item: ident, $default: ident, $filter: ident, $property: ident) => {
+    ($map:ident, $item:ident, $default:ident, $filter:ident, $property:ident) => {
         if_not_default_then_insert!($map, $item, $default, $filter, $property, (|r| r));
     };
-    ($map: ident, $item: ident, $default: ident, $filter: ident, $property: ident, $property_name: literal) => {{
+    (
+        $map:ident,
+        $item:ident,
+        $default:ident,
+        $filter:ident,
+        $property:ident,
+        $property_name:literal
+    ) => {{
         if_not_default_then_insert!(
             $map,
             $item,
@@ -531,17 +526,25 @@ macro_rules! if_not_default_then_insert {
             (|r| r)
         );
     }};
-    ($map: ident, $item: ident, $default: ident, $filter: ident, $property: ident, $to_refarg: tt) => {{
+    ($map:ident, $item:ident, $default:ident, $filter:ident, $property:ident, $to_refarg:tt) => {{
         let name = stringify!($property);
         if_not_default_then_insert!($map, $item, $default, $filter, $property, name, $to_refarg);
     }};
-    ($map: ident, $item: ident, $default: ident, $filter: ident, $property: ident, $property_name: tt, $to_refarg: tt) => {
+    (
+        $map:ident,
+        $item:ident,
+        $default:ident,
+        $filter:ident,
+        $property:ident,
+        $property_name:tt,
+        $to_refarg:tt
+    ) => {
         if ($filter.is_empty() || $filter.iter().any(|s| s == $property_name))
             && $item.$property != $default.$property
         {
             $map.insert(
                 $property_name.into(),
-                OwnedValue::from($to_refarg($item.$property.clone())),
+                OwnedVariant::from($to_refarg($item.$property.clone())),
             );
         }
     };
@@ -558,8 +561,8 @@ impl<T> RawMenuItem<T> {
         &self,
         property_filter: &[String],
         has_children: bool,
-    ) -> HashMap<Cow<'static, str>, OwnedValue> {
-        let mut properties: HashMap<Cow<'static, str>, OwnedValue> = HashMap::with_capacity(12);
+    ) -> HashMap<Cow<'static, str>, OwnedVariant> {
+        let mut properties: HashMap<Cow<'static, str>, OwnedVariant> = HashMap::with_capacity(12);
         if has_children
             && (property_filter.is_empty()
                 || property_filter.iter().any(|s| s == "children-display"))
@@ -598,10 +601,10 @@ impl<T> RawMenuItem<T> {
             property_filter,
             icon_data,
             "icon-data",
-            (|r: Vec<u8>| -> OwnedValue {
-                Value::from(r)
+            (|r: Vec<u8>| -> OwnedVariant {
+                Variant::from(r)
                     .try_into()
-                    .expect("unreachable: Vec<u8> to OwnedValue")
+                    .expect("unreachable: Vec<u8> to OwnedVariant")
             })
         );
         if_not_default_then_insert!(
@@ -610,10 +613,10 @@ impl<T> RawMenuItem<T> {
             default,
             property_filter,
             shortcut,
-            (|r: Vec<Vec<String>>| -> OwnedValue {
-                Value::from(r)
+            (|r: Vec<Vec<String>>| -> OwnedVariant {
+                Variant::from(r)
                     .try_into()
-                    .expect("unreachable: Vec<Vec<String>> to OwnedValue")
+                    .expect("unreachable: Vec<Vec<String>> to OwnedVariant")
             })
         );
         if_not_default_then_insert!(
@@ -641,11 +644,11 @@ impl<T> RawMenuItem<T> {
         &self,
         other: &Self,
     ) -> Option<(
-        HashMap<Cow<'static, str>, OwnedValue>,
+        HashMap<Cow<'static, str>, OwnedVariant>,
         Vec<Cow<'static, str>>,
     )> {
         let default = Self::default();
-        let mut updated_props: HashMap<Cow<'static, str>, OwnedValue> = HashMap::new();
+        let mut updated_props: HashMap<Cow<'static, str>, OwnedVariant> = HashMap::new();
         let mut removed_props: Vec<Cow<'static, str>> = Vec::new();
         if self.r#type != other.r#type {
             if other.r#type == default.r#type {
@@ -653,7 +656,7 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "type".into(),
-                    <OwnedValue as From<Str>>::from(other.r#type.to_string().into()),
+                    <OwnedVariant as From<Str>>::from(other.r#type.to_string().into()),
                 );
             }
         }
@@ -663,7 +666,7 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "label".into(),
-                    <OwnedValue as From<Str>>::from(other.label.clone().into()),
+                    <OwnedVariant as From<Str>>::from(other.label.clone().into()),
                 );
             }
         }
@@ -671,14 +674,14 @@ impl<T> RawMenuItem<T> {
             if other.enabled == default.enabled {
                 removed_props.push("enabled".into());
             } else {
-                updated_props.insert("enabled".into(), OwnedValue::from(other.enabled));
+                updated_props.insert("enabled".into(), OwnedVariant::from(other.enabled));
             }
         }
         if self.visible != other.visible {
             if other.visible == default.visible {
                 removed_props.push("visible".into());
             } else {
-                updated_props.insert("visible".into(), OwnedValue::from(other.visible));
+                updated_props.insert("visible".into(), OwnedVariant::from(other.visible));
             }
         }
         if self.icon_name != other.icon_name {
@@ -687,7 +690,7 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "icon-name".into(),
-                    <OwnedValue as From<Str>>::from(other.icon_name.clone().into()),
+                    <OwnedVariant as From<Str>>::from(other.icon_name.clone().into()),
                 );
             }
         }
@@ -697,8 +700,8 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "icon-data".into(),
-                    <OwnedValue as TryFrom<Value>>::try_from(other.icon_data.clone().into())
-                        .expect("unreachable: Vec<u8> to OwnedValue"),
+                    <OwnedVariant as TryFrom<Variant>>::try_from(other.icon_data.clone().into())
+                        .expect("unreachable: Vec<u8> to OwnedVariant"),
                 );
             }
         }
@@ -708,8 +711,8 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "shortcut".into(),
-                    <OwnedValue as TryFrom<Value>>::try_from(other.shortcut.clone().into())
-                        .expect("unreachable: Vec<Vec<u8>> to OwnedValue"),
+                    <OwnedVariant as TryFrom<Variant>>::try_from(other.shortcut.clone().into())
+                        .expect("unreachable: Vec<Vec<u8>> to OwnedVariant"),
                 );
             }
         }
@@ -719,7 +722,7 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "toggle-type".into(),
-                    <OwnedValue as From<Str>>::from(other.toggle_type.to_string().into()),
+                    <OwnedVariant as From<Str>>::from(other.toggle_type.to_string().into()),
                 );
             }
         }
@@ -729,7 +732,7 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "toggle-state".into(),
-                    OwnedValue::from(other.toggle_state as i32),
+                    OwnedVariant::from(other.toggle_state as i32),
                 );
             }
         }
@@ -739,7 +742,7 @@ impl<T> RawMenuItem<T> {
             } else {
                 updated_props.insert(
                     "disposition".into(),
-                    <OwnedValue as From<Str>>::from(other.disposition.to_string().into()),
+                    <OwnedVariant as From<Str>>::from(other.disposition.to_string().into()),
                 );
             }
         }
@@ -764,7 +767,7 @@ impl<T> Default for RawMenuItem<T> {
             toggle_type: ToggleType::Null,
             toggle_state: ToggleState::Indeterminate,
             disposition: Disposition::Normal,
-            //submenu: Vec::default(),
+            // submenu: Vec::default(),
             on_clicked: Box::new(|_this: &mut T, _id| Default::default()),
         }
     }
@@ -789,7 +792,7 @@ impl fmt::Display for ItemType {
     }
 }
 
-impl From<ItemType> for OwnedValue {
+impl From<ItemType> for OwnedVariant {
     fn from(value: ItemType) -> Self {
         use ItemType::*;
         let s = match value {
@@ -822,7 +825,7 @@ impl fmt::Display for ToggleType {
     }
 }
 
-impl From<ToggleType> for OwnedValue {
+impl From<ToggleType> for OwnedVariant {
     fn from(value: ToggleType) -> Self {
         use ToggleType::*;
         let s = match value {
@@ -841,7 +844,7 @@ enum ToggleState {
     Indeterminate = -1,
 }
 
-impl From<ToggleState> for OwnedValue {
+impl From<ToggleState> for OwnedVariant {
     fn from(value: ToggleState) -> Self {
         (value as i32).into()
     }
@@ -875,7 +878,7 @@ impl fmt::Display for Disposition {
     }
 }
 
-impl From<Disposition> for OwnedValue {
+impl From<Disposition> for OwnedVariant {
     fn from(value: Disposition) -> Self {
         use Disposition::*;
         let s = match value {
@@ -986,11 +989,13 @@ mod test {
                 submenu: vec![
                     SubMenu {
                         label: "a1".into(),
-                        submenu: vec![StandardItem {
-                            label: "a1.1".into(),
-                            ..Default::default()
-                        }
-                        .into()],
+                        submenu: vec![
+                            StandardItem {
+                                label: "a1.1".into(),
+                                ..Default::default()
+                            }
+                            .into(),
+                        ],
                         ..Default::default()
                     }
                     .into(),
@@ -1018,11 +1023,13 @@ mod test {
                     .into(),
                     SubMenu {
                         label: "c2".into(),
-                        submenu: vec![StandardItem {
-                            label: "c2.1".into(),
-                            ..Default::default()
-                        }
-                        .into()],
+                        submenu: vec![
+                            StandardItem {
+                                label: "c2.1".into(),
+                                ..Default::default()
+                            }
+                            .into(),
+                        ],
                         ..Default::default()
                     }
                     .into(),

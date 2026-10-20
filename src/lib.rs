@@ -40,7 +40,7 @@ mod tray;
 pub use menu::{MenuItem, TextDirection};
 pub use tray::{Category, Icon, Orientation, Status, ToolTip};
 
-use crate::compat::{mpsc, oneshot, task_local, Mutex};
+use crate::compat::{Mutex, mpsc, oneshot, task_local};
 
 task_local! {
     pub(crate) static NO_ABOUT_TO_SHOW: Cell<bool>;
@@ -319,7 +319,7 @@ pub trait TrayMethods: Tray + private::Sealed {
     //
     // Will panic if the tray is not running, should only be used in [Tray::menu]
     // callbacks
-    //fn handle(&self) -> Handle<Self> {
+    // fn handle(&self) -> Handle<Self> {
     //    todo!()
     //}
 
@@ -382,10 +382,10 @@ pub trait TrayMethods: Tray + private::Sealed {
 
     /// Assume the system has a working [StatusNotifierItem] implementation
     ///
-    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not provided by any .service files"))`
-    /// (message may vary by D-Bus implementation) and [`Error::WontShow`] are treated as "soft
-    /// errors": they are routed to [`Tray::watcher_offline`] instead of causing [`spawn()`] to return
-    /// immediately.
+    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not
+    /// provided by any .service files"))` (message may vary by D-Bus implementation) and
+    /// [`Error::WontShow`] are treated as "soft errors": they are routed to
+    /// [`Tray::watcher_offline`] instead of causing [`spawn()`] to return immediately.
     ///
     /// Useful when your application may start before the desktop environment is fully initialized,
     /// but it also means the tray may never appear if SNI support is truly absent.
@@ -479,10 +479,10 @@ impl<T: Tray> TrayServiceBuilder<T> {
 
     /// Assume the system has a working [StatusNotifierItem] implementation
     ///
-    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not provided by any .service files"))`
-    /// (message may vary by D-Bus implementation) and [`Error::WontShow`] are treated as "soft
-    /// errors": they are routed to [`Tray::watcher_offline`] instead of causing [`spawn()`] to return
-    /// immediately.
+    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not
+    /// provided by any .service files"))` (message may vary by D-Bus implementation) and
+    /// [`Error::WontShow`] are treated as "soft errors": they are routed to
+    /// [`Tray::watcher_offline`] instead of causing [`spawn()`] to return immediately.
     ///
     /// Useful when your application may start before the desktop environment is fully initialized,
     /// but it also means the tray may never appear if SNI support is truly absent.

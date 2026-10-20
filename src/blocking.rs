@@ -3,10 +3,8 @@
 use std::sync::Arc;
 use std::thread;
 
-use crate::{
-    compat::{self, mpsc},
-    private, service, Error, Tray,
-};
+use crate::compat::{self, mpsc};
+use crate::{Error, Tray, private, service};
 
 /// Provides blocking methods for [`Tray`]
 pub trait TrayMethods: Tray + private::Sealed {
@@ -68,10 +66,10 @@ pub trait TrayMethods: Tray + private::Sealed {
 
     /// Assume the system has a working [StatusNotifierItem] implementation
     ///
-    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not provided by any .service files"))`
-    /// (message may vary by D-Bus implementation) and [`Error::WontShow`] are treated as "soft
-    /// errors": they are routed to [`Tray::watcher_offline`] instead of causing [`spawn()`] to return
-    /// immediately.
+    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not
+    /// provided by any .service files"))` (message may vary by D-Bus implementation) and
+    /// [`Error::WontShow`] are treated as "soft errors": they are routed to
+    /// [`Tray::watcher_offline`] instead of causing [`spawn()`] to return immediately.
     ///
     /// Useful when your application may start before the desktop environment is fully initialized,
     /// but it also means the tray may never appear if SNI support is truly absent.
@@ -151,10 +149,10 @@ impl<T: Tray> TrayServiceBuilder<T> {
 
     /// Assume the system has a working [StatusNotifierItem] implementation
     ///
-    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not provided by any .service files"))`
-    /// (message may vary by D-Bus implementation) and [`Error::WontShow`] are treated as "soft
-    /// errors": they are routed to [`Tray::watcher_offline`] instead of causing [`spawn()`] to return
-    /// immediately.
+    /// When `true`, `Error::Watcher(ServiceUnknown("The name org.kde.StatusNotifierWatcher was not
+    /// provided by any .service files"))` (message may vary by D-Bus implementation) and
+    /// [`Error::WontShow`] are treated as "soft errors": they are routed to
+    /// [`Tray::watcher_offline`] instead of causing [`spawn()`] to return immediately.
     ///
     /// Useful when your application may start before the desktop environment is fully initialized,
     /// but it also means the tray may never appear if SNI support is truly absent.

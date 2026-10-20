@@ -8,9 +8,8 @@ compile_error!(r#"Features "tokio" and "async-io" cannot be enabled at the same 
 mod tokio {
     use std::future::Future;
 
-    pub use tokio::select;
     pub use tokio::sync::Mutex;
-    pub use tokio::task_local;
+    pub use tokio::{select, task_local};
 
     // remove the return value to compat with async-io
     pub fn spawn<F>(future: F)
@@ -24,6 +23,7 @@ mod tokio {
     #[cfg(feature = "blocking")]
     pub fn block_on<T>(future: impl Future<Output = T>) -> T {
         use std::sync::LazyLock;
+
         use tokio::runtime::Runtime;
         static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
             tokio::runtime::Builder::new_current_thread()
@@ -35,10 +35,10 @@ mod tokio {
     }
 
     pub mod mpsc {
-        pub use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+        pub use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
     }
     pub mod oneshot {
-        pub use tokio::sync::oneshot::{channel, Receiver, Sender};
+        pub use tokio::sync::oneshot::{Receiver, Sender, channel};
     }
 }
 #[cfg(feature = "tokio")]
@@ -47,11 +47,10 @@ pub use tokio::*;
 #[cfg(all(feature = "async-io", not(feature = "tokio")))]
 mod async_io {
     use std::future::Future;
+    use std::sync::LazyLock;
     use std::sync::atomic::{AtomicBool, Ordering};
 
     use async_executor::Executor;
-    use std::sync::LazyLock;
-
     pub use task_local::task_local;
 
     // Do NOT use async_lock::OnceCell instead
@@ -133,9 +132,8 @@ mod async_io {
     pub use crate::select;
 
     pub mod mpsc {
-        use futures_util::StreamExt;
-
         pub use futures_channel::mpsc::TrySendError as SendError;
+        use futures_util::StreamExt;
 
         pub fn unbounded_channel<T>() -> (UnboundedSender<T>, UnboundedReceiver<T>) {
             let (tx, rx) = futures_channel::mpsc::unbounded();
@@ -169,7 +167,7 @@ mod async_io {
     }
 
     pub mod oneshot {
-        pub use futures_channel::oneshot::{channel, Receiver, Sender};
+        pub use futures_channel::oneshot::{Receiver, Sender, channel};
         //    use std::future::Future;
         //
         //    pub use async_channel::Sender;

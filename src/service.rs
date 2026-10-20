@@ -3,22 +3,21 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::future::Future;
 use std::hash::{Hash, Hasher};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-use futures_util::{future::Either, StreamExt};
+use futures_util::StreamExt;
+use futures_util::future::Either;
 use pastey::paste;
 use zbus::fdo::DBusProxy;
-use zbus::zvariant::{OwnedValue, Value};
-use zbus::Connection;
+use zbus::{Connection, OwnedVariant, Variant};
 
-use crate::compat::{self, mpsc, select, Mutex};
+use crate::compat::{self, Mutex, mpsc, select};
 use crate::dbus_interface::{
-    DbusMenu, Layout, StatusNotifierItem, StatusNotifierWatcherProxy, MENU_INTERFACE, MENU_PATH,
-    SNI_INTERFACE, SNI_PATH,
+    DbusMenu, Layout, MENU_INTERFACE, MENU_PATH, SNI_INTERFACE, SNI_PATH, StatusNotifierItem,
+    StatusNotifierWatcherProxy,
 };
-use crate::menu;
-use crate::{Error, HandleReuest, OfflineReason, Tray};
+use crate::{Error, HandleReuest, OfflineReason, Tray, menu};
 
 static INSTANCE_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
@@ -31,28 +30,12 @@ pub(crate) async fn run<T: Tray>(
     let sni_obj = StatusNotifierItem::new(service.clone());
     let menu_obj = DbusMenu::new(service.clone());
 
-    // for those `expect`, see: https://github.com/dbus2/zbus/issues/403
     let conn = zbus::connection::Builder::session()
-        .map_err(|e| Error::Dbus(e))?
-        .internal_executor(false) // avoid extra thread when async-io enabled
         .serve_at(SNI_PATH, sni_obj)
-        .expect("SNI_PATH should be valid")
         .serve_at(MENU_PATH, menu_obj)
-        .expect("MENU_PATH should be valid")
         .build()
         .await
-        .map_err(|e| Error::Dbus(e))?;
-
-    if cfg!(feature = "async-io") {
-        let executor = conn.executor().clone();
-        // must start the executor before register_status_notifier_item
-        compat::spawn(async move {
-            // won't empty until conn stopped
-            while !executor.is_empty() {
-                executor.tick().await;
-            }
-        });
-    }
+        .map_err(Error::Dbus)?;
 
     let name = if own_name {
         let name = format!(
@@ -216,8 +199,8 @@ impl<T: Tray> Service<T> {
             .interface::<_, DbusMenu<T>>(MENU_PATH)
             .await?;
 
-        let mut sni_changed: HashMap<&str, Value> = HashMap::new();
-        let mut menu_changed: HashMap<&str, Value> = HashMap::new();
+        let mut sni_changed: HashMap<&str, Variant> = HashMap::new();
+        let mut menu_changed: HashMap<&str, Variant> = HashMap::new();
 
         if self.text_direction_changed() {
             menu_changed.insert("TextDirection", self.get_text_direction().into());
@@ -409,7 +392,7 @@ impl<T: Tray> Service<T> {
         let root = self.id2index(parent_id)?;
 
         let mut stack = vec![(root, 0, false)];
-        let mut pending_children: Vec<Value<'static>> = Vec::new();
+        let mut pending_children: Vec<Variant<'static>> = Vec::new();
 
         while let Some((index, depth, all_childs_processed)) = stack.pop() {
             let (item, child_idxs) = &self.flattened_menu[index];
@@ -452,7 +435,7 @@ impl<T: Tray> Service<T> {
     pub fn get_all_item(
         &self,
         property_filter: &[String],
-    ) -> Vec<(i32, HashMap<Cow<'static, str>, OwnedValue>)> {
+    ) -> Vec<(i32, HashMap<Cow<'static, str>, OwnedVariant>)> {
         self.flattened_menu
             .iter()
             .enumerate()
@@ -469,7 +452,7 @@ impl<T: Tray> Service<T> {
         &self,
         id: i32,
         property_filter: &[String],
-    ) -> Option<HashMap<Cow<'static, str>, OwnedValue>> {
+    ) -> Option<HashMap<Cow<'static, str>, OwnedVariant>> {
         self.id2index(id).map(|index| {
             let (item, children) = &self.flattened_menu[index];
             item.to_dbus_map(property_filter, !children.is_empty())
@@ -482,7 +465,7 @@ impl<T: Tray> Service<T> {
         do_update: bool,
         id: i32,
         event_id: &str,
-        _data: OwnedValue,
+        _data: OwnedVariant,
         _timestamp: u32,
     ) -> zbus::fdo::Result<()> {
         match event_id {
@@ -629,13 +612,15 @@ fn hash_of<T: Hash>(v: T) -> u64 {
 mod tests {
     use std::sync::Arc;
 
-    use super::Service;
-    use crate::{menu::StandardItem, Tray};
     #[cfg(feature = "async-io")]
     use macro_rules_attribute::apply;
     #[cfg(feature = "async-io")]
     use smol_macros::test;
-    use zbus::zvariant::OwnedValue;
+    use zbus::OwnedVariant;
+
+    use super::Service;
+    use crate::Tray;
+    use crate::menu::StandardItem;
 
     #[derive(Clone, Default)]
     struct TestTray;
@@ -652,11 +637,13 @@ mod tests {
                     submenu: vec![
                         crate::menu::SubMenu {
                             label: "nested-submenu".into(),
-                            submenu: vec![StandardItem {
-                                label: "deep-item".into(),
-                                ..Default::default()
-                            }
-                            .into()],
+                            submenu: vec![
+                                StandardItem {
+                                    label: "deep-item".into(),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ],
                             ..Default::default()
                         }
                         .into(),
@@ -719,7 +706,7 @@ mod tests {
                 const { repetition_utils!(@count $($key),*) }
             );
             $(
-                let value = zbus::zvariant::Value::from($value).try_into_owned().unwrap();
+                let value = zbus::Variant::from($value).try_into_owned().unwrap();
                 map.insert($key.into(), value);
             )*
             map
@@ -884,11 +871,14 @@ mod tests {
                                                             .into(),
                                                             crate::menu::SubMenu {
                                                                 label: "0.1.1.1.0.1".into(),
-                                                                submenu: vec![StandardItem {
-                                                                    label: "0.1.1.1.0.1.0".into(),
-                                                                    ..Default::default()
-                                                                }
-                                                                .into()],
+                                                                submenu: vec![
+                                                                    StandardItem {
+                                                                        label: "0.1.1.1.0.1.0"
+                                                                            .into(),
+                                                                        ..Default::default()
+                                                                    }
+                                                                    .into(),
+                                                                ],
                                                                 ..Default::default()
                                                             }
                                                             .into(),
@@ -930,11 +920,13 @@ mod tests {
                             .into(),
                             crate::menu::SubMenu {
                                 label: "0.3".into(),
-                                submenu: vec![StandardItem {
-                                    label: "0.3.0".into(),
-                                    ..Default::default()
-                                }
-                                .into()],
+                                submenu: vec![
+                                    StandardItem {
+                                        label: "0.3.0".into(),
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                ],
                                 ..Default::default()
                             }
                             .into(),
@@ -970,11 +962,13 @@ mod tests {
                                     .into(),
                                     crate::menu::SubMenu {
                                         label: "2.1.2".into(),
-                                        submenu: vec![StandardItem {
-                                            label: "2.1.2.0".into(),
-                                            ..Default::default()
-                                        }
-                                        .into()],
+                                        submenu: vec![
+                                            StandardItem {
+                                                label: "2.1.2.0".into(),
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                        ],
                                         ..Default::default()
                                     }
                                     .into(),
@@ -996,34 +990,36 @@ mod tests {
                         submenu: vec![
                             crate::menu::SubMenu {
                                 label: "3.0".into(),
-                                submenu: vec![crate::menu::SubMenu {
-                                    label: "3.0.0".into(),
-                                    submenu: vec![
-                                        StandardItem {
-                                            label: "3.0.0.0".into(),
-                                            ..Default::default()
-                                        }
-                                        .into(),
-                                        StandardItem {
-                                            label: "3.0.0.1".into(),
-                                            ..Default::default()
-                                        }
-                                        .into(),
-                                        crate::menu::SubMenu {
-                                            label: "3.0.0.2".into(),
-                                            submenu: Vec::new(),
-                                            ..Default::default()
-                                        }
-                                        .into(),
-                                        StandardItem {
-                                            label: "3.0.0.3".into(),
-                                            ..Default::default()
-                                        }
-                                        .into(),
-                                    ],
-                                    ..Default::default()
-                                }
-                                .into()],
+                                submenu: vec![
+                                    crate::menu::SubMenu {
+                                        label: "3.0.0".into(),
+                                        submenu: vec![
+                                            StandardItem {
+                                                label: "3.0.0.0".into(),
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                            StandardItem {
+                                                label: "3.0.0.1".into(),
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                            crate::menu::SubMenu {
+                                                label: "3.0.0.2".into(),
+                                                submenu: Vec::new(),
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                            StandardItem {
+                                                label: "3.0.0.3".into(),
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                        ],
+                                        ..Default::default()
+                                    }
+                                    .into(),
+                                ],
                                 ..Default::default()
                             }
                             .into(),
@@ -1245,12 +1241,14 @@ mod tests {
                                     "label" => "0.3",
                                     "children-display" => "submenu",
                                 },
-                                children: vec![crate::dbus_interface::Layout {
-                                    id: 17,
-                                    properties: properties! { "label" => "0.3.0" },
-                                    children: vec![],
-                                }
-                                .into(),],
+                                children: vec![
+                                    crate::dbus_interface::Layout {
+                                        id: 17,
+                                        properties: properties! { "label" => "0.3.0" },
+                                        children: vec![],
+                                    }
+                                    .into(),
+                                ],
                             }
                             .into(),
                         ],
@@ -1300,12 +1298,14 @@ mod tests {
                                             "label" => "2.1.2",
                                             "children-display" => "submenu",
                                         },
-                                        children: vec![crate::dbus_interface::Layout {
-                                            id: 25,
-                                            properties: properties! { "label" => "2.1.2.0" },
-                                            children: vec![],
-                                        }
-                                        .into(),],
+                                        children: vec![
+                                            crate::dbus_interface::Layout {
+                                                id: 25,
+                                                properties: properties! { "label" => "2.1.2.0" },
+                                                children: vec![],
+                                            }
+                                            .into(),
+                                        ],
                                     }
                                     .into(),
                                 ],
@@ -1333,40 +1333,42 @@ mod tests {
                                     "label" => "3.0",
                                     "children-display" => "submenu",
                                 },
-                                children: vec![crate::dbus_interface::Layout {
-                                    id: 29,
-                                    properties: properties! {
-                                        "label" => "3.0.0",
-                                        "children-display" => "submenu",
-                                    },
-                                    children: vec![
-                                        crate::dbus_interface::Layout {
-                                            id: 30,
-                                            properties: properties! { "label" => "3.0.0.0" },
-                                            children: vec![],
-                                        }
-                                        .into(),
-                                        crate::dbus_interface::Layout {
-                                            id: 31,
-                                            properties: properties! { "label" => "3.0.0.1" },
-                                            children: vec![],
-                                        }
-                                        .into(),
-                                        crate::dbus_interface::Layout {
-                                            id: 32,
-                                            properties: properties! { "label" => "3.0.0.2" },
-                                            children: vec![],
-                                        }
-                                        .into(),
-                                        crate::dbus_interface::Layout {
-                                            id: 33,
-                                            properties: properties! { "label" => "3.0.0.3" },
-                                            children: vec![],
-                                        }
-                                        .into(),
-                                    ],
-                                }
-                                .into(),],
+                                children: vec![
+                                    crate::dbus_interface::Layout {
+                                        id: 29,
+                                        properties: properties! {
+                                            "label" => "3.0.0",
+                                            "children-display" => "submenu",
+                                        },
+                                        children: vec![
+                                            crate::dbus_interface::Layout {
+                                                id: 30,
+                                                properties: properties! { "label" => "3.0.0.0" },
+                                                children: vec![],
+                                            }
+                                            .into(),
+                                            crate::dbus_interface::Layout {
+                                                id: 31,
+                                                properties: properties! { "label" => "3.0.0.1" },
+                                                children: vec![],
+                                            }
+                                            .into(),
+                                            crate::dbus_interface::Layout {
+                                                id: 32,
+                                                properties: properties! { "label" => "3.0.0.2" },
+                                                children: vec![],
+                                            }
+                                            .into(),
+                                            crate::dbus_interface::Layout {
+                                                id: 33,
+                                                properties: properties! { "label" => "3.0.0.3" },
+                                                children: vec![],
+                                            }
+                                            .into(),
+                                        ],
+                                    }
+                                    .into(),
+                                ],
                             }
                             .into(),
                             crate::dbus_interface::Layout {
@@ -1785,7 +1787,7 @@ mod tests {
         let mut service = service.lock().await;
 
         let err = service
-            .event(&conn, false, 0, "clicked", OwnedValue::from(0_u8), 0)
+            .event(&conn, false, 0, "clicked", OwnedVariant::from(0_u8), 0)
             .await
             .expect_err("root menu clicked should return InvalidArgs");
 
