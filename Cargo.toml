@@ -88,3 +88,7 @@ required-features = ["blocking"]
 
 [package.metadata.docs.rs]
 features = ["blocking"]
+
+[[test]]
+name = "zbus6"
+required-features = ["async-io", "blocking"]
